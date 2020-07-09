@@ -70,14 +70,8 @@ if ( workflow.profile == 'awsbatch') {
 // Stage config files
 ch_output_docs = file("$baseDir/docs/output.md", checkIfExists: true)
 
-// john hopkins timeseries data suffixes:
-timeseries = Channel.from(
-    "deaths_US", "confirmed_US", "recovered_global", "deaths_global", "confirmed_global"
-)
 
-/*
- * Create a channel for input read files
- */
+
 
 
 // Header log info
@@ -86,9 +80,6 @@ def summary = [:]
 if (workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
 // TODO nf-core: Report custom parameters here
-summary['Reads']            = params.reads
-summary['Fasta Ref']        = params.fasta
-summary['Data Type']        = params.singleEnd ? 'Single-End' : 'Paired-End'
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if (workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
@@ -107,7 +98,6 @@ if (params.config_profile_url)         summary['Config URL']         = params.co
 if (params.email || params.email_on_fail) {
   summary['E-mail Address']    = params.email
   summary['E-mail on failure'] = params.email_on_fail
-  summary['MultiQC maxsize']   = params.maxMultiqcEmailFileSize
 }
 log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "-\033[2m--------------------------------------------------\033[0m-"
@@ -172,21 +162,6 @@ process output_documentation {
     markdown_to_html.r $output_docs results_description.html
     """
 }
-
-// process download_timeseries {
-//     publishDir "${params.outdir}/timeseries", mode: 'copy'
-
-//     input:
-//     val timeseries
-
-//     output:
-//     file "*.csv" into ch_timerseries
-
-//     script:
-//     """
-//     wget https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_{$timeseries}.csv
-//     """
-// }
 
 
 

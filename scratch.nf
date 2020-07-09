@@ -1,13 +1,15 @@
 
-process download_metadata {
+process download_gisaid_metadata_and_sequences {
     publishDir "${params.outdir}/gisaid", mode: 'copy'
 
     output:
     file "*metadata.tsv" into ch_metadata
+    file "*sequences.fasta" into ch_sequences
 
     shell:
     """
     aws s3 cp s3://czb-covid-results/gisaid/metadata.tsv.gz - | gunzip -cq >metadata.tsv
+    aws s3 cp s3://czb-covid-results/gisaid/sequences.fasta.gz - | gunzip -cq >sequences.fasta
     """
 }
 
@@ -31,9 +33,6 @@ process download_timeseries {
     """
 }
 
-
-
-
 process clean_and_transform_timeseries {
     publishDir "${params.outdir}/timeseries_cleaned", mode: 'copy'
 
@@ -49,9 +48,7 @@ process clean_and_transform_timeseries {
 
     output:
     file "*.tsv" into ch_cleaned_timeseries
-
-    // output:
-    // stdout "x" into ch_strings
+    file "*.RData" into ch_rdata_cleaned_timeseries
 
     script:
     """
@@ -62,23 +59,35 @@ process clean_and_transform_timeseries {
         ${recovered_global} \
         ${deaths_global} \
         ${confirmed_global} \
-        ${who_sitreps}
+        ${who_sitreps} \
         ${wuhan_incidence}
     """
-    // """
-    // practice.R \
-    //     ${metadata} \
-    //     ${deaths_us} \
-    //     ${confirmed_us} \
-    //     ${recovered_global} \
-    //     ${deaths_global} \
-    //     ${confirmed_global} \
-    //     ${who_sitreps} \
-    //     ${wuhan_incidence}
-    // """    
 }
 
 
-ch_cleaned_timeseries.view()
-// ch_cleaned_timeseries.view()
+process rename_sequences_to_include_collection_dates {
+    publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
+
+    input:
+    file metadata from ch_metadata
+    file sequences from ch_sequences
+    file rdata from ch_rdata_cleaned_timeseries
+    file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
+
+    output:
+    file "*.fasta" into ch_renamed_fastas
+    file "*.RData" into ch_rdata_renamed_sequences
+
+    script:
+    """
+    02_filter_seq.R \
+        ${rdata} \
+        ${metadata} \
+        ${sequences} \
+        ${outgroup_fasta}
+    """
+}
+
+ch_renamed_fastas.view()
+
 
