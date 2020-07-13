@@ -75,7 +75,7 @@ process rename_sequences_to_include_collection_dates {
     file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
 
     output:
-    file "*.fasta" into ch_renamed_fastas
+    file "msa/*/*.fasta" into ch_renamed_fastas
     file "*.RData" into ch_rdata_renamed_sequences
 
     script:
@@ -88,6 +88,5 @@ process rename_sequences_to_include_collection_dates {
     """
 }
 
-ch_renamed_fastas.view()
 
 
