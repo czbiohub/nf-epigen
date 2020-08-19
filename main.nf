@@ -134,6 +134,18 @@ process download_gisaid_metadata_and_sequences {
     """
 }
 
+process download_newicks {
+    publishDir "${params.outdir}/newicks"
+
+    output:
+    file "*.nwk" into ch_newick
+
+    script:
+    """
+    aws s3 cp s3://czb-covid-results/gisaid/results/ . --recursive --exclude '*' --include '*.nwk'
+    """
+}
+
 process download_timeseries {
     publishDir "${params.outdir}/timeseries", mode: 'copy'
 
@@ -184,6 +196,45 @@ process clean_and_transform_timeseries {
         ${wuhan_incidence}
     """
 }
+
+// process reformat_newick_node_to_include_date_of_sampling {
+//     publishDir "${params.outdir}/newicks_w_date_of_sampling"
+
+//     input:
+//     file metadata from ch_metadata
+//     file newick from ch_newick
+
+//     output:
+//     file *.nwk into ch_newick_w_date_of_sampling_labels
+
+//     script:
+//     """
+//     reformat_newick_to_include_date_of_sampling.R \
+//         ${metadata} \
+//         ${newick}
+//     """
+// }
+
+// process impute_infection_dates {
+//     publishDir "${params.outdir}/imputed_infection_dates"
+
+//     input:
+//     file timeseries from ch_cleaned_timeseries
+//     file newick from ch_newick_w_date_of_sampling_labels
+
+//     output:
+//     file "*csv" into ch_imputed_infection_dates
+
+//     script:
+//     """
+//     impute_infection_dates.R \
+//         ${timeseries} \
+//         ${newick}
+
+//     """
+
+
+// }
 
 
 process rename_sequences_to_include_collection_dates {
@@ -285,7 +336,7 @@ workflow.onComplete {
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-  
+
     // Check if we are only sending emails on failure
     email_address = params.email
     if (!params.email && params.email_on_fail && !workflow.success) {
