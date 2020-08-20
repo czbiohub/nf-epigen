@@ -197,23 +197,10 @@ process clean_and_transform_timeseries {
     """
 }
 
-// process reformat_newick_node_to_include_date_of_sampling {
-//     publishDir "${params.outdir}/newicks_w_date_of_sampling"
-
-//     input:
-//     file metadata from ch_metadata
-//     file newick from ch_newick
-
-//     output:
-//     file *.nwk into ch_newick_w_date_of_sampling_labels
-
-//     script:
-//     """
-//     reformat_newick_to_include_date_of_sampling.R \
-//         ${metadata} \
-//         ${newick}
-//     """
-// }
+ch_cleaned_timeseries
+  .map { file -> tuple(get_prefix(file.name), file) }
+  .groupTuple()
+  .view()
 
 // process impute_infection_dates {
 //     publishDir "${params.outdir}/imputed_infection_dates"
@@ -221,44 +208,45 @@ process clean_and_transform_timeseries {
 //     input:
 //     file timeseries from ch_cleaned_timeseries
 //     file newick from ch_newick_w_date_of_sampling_labels
+//     file metadata from ch_metadata
 
 //     output:
 //     file "*csv" into ch_imputed_infection_dates
 
 //     script:
 //     """
-//     impute_infection_dates.R \
+//     03_impute_infection_dates.R \
+//         ${newick} \
+//         ${metadata} \
 //         ${timeseries} \
-//         ${newick}
-
 //     """
 
 
 // }
 
 
-process rename_sequences_to_include_collection_dates {
-    publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
+// process rename_sequences_to_include_collection_dates {
+//     publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
 
-    input:
-    file metadata from ch_metadata
-    file sequences from ch_sequences
-    file rdata from ch_rdata_cleaned_timeseries
-    file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
+//     input:
+//     file metadata from ch_metadata
+//     file sequences from ch_sequences
+//     file rdata from ch_rdata_cleaned_timeseries
+//     file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
 
-    output:
-    file "msa/*/*.fasta" into ch_renamed_fastas
-    file "*.RData" into ch_rdata_renamed_sequences
+//     output:
+//     file "msa/*/*.fasta" into ch_renamed_fastas
+//     file "*.RData" into ch_rdata_renamed_sequences
 
-    script:
-    """
-    02_filter_seq.R \
-        ${rdata} \
-        ${metadata} \
-        ${sequences} \
-        ${outgroup_fasta}
-    """
-}
+//     script:
+//     """
+//     02_filter_seq.R \
+//         ${rdata} \
+//         ${metadata} \
+//         ${sequences} \
+//         ${outgroup_fasta}
+//     """
+// }
 
 /*
  * Parse software version numbers
@@ -286,20 +274,20 @@ process rename_sequences_to_include_collection_dates {
 /*
  * STEP 3 - Output Description HTML
  */
-process output_documentation {
-    publishDir "${params.outdir}/pipeline_info", mode: 'copy'
+// process output_documentation {
+//     publishDir "${params.outdir}/pipeline_info", mode: 'copy'
 
-    input:
-    file output_docs from ch_output_docs
+//     input:
+//     file output_docs from ch_output_docs
 
-    output:
-    file "results_description.html"
+//     output:
+//     file "results_description.html"
 
-    script:
-    """
-    markdown_to_html.r $output_docs results_description.html
-    """
-}
+//     script:
+//     """
+//     markdown_to_html.r $output_docs results_description.html
+//     """
+// }
 
 
 
