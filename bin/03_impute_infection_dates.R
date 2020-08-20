@@ -15,14 +15,9 @@ cleaned_timeseries <- file.path(args[3]) # ex: "~/code/nf-core-epigen/results/ti
 # -----------------------------------------------------
 trs <- mapply(function (x, y) {
   tr <- read.newick(x)
-  node_dates <- read_tsv(
-    y, comment="#", col_names=c(
-      "node", "date", "date_median", "date_lower", "date_upper"
-      )) %>% filter(as.character(date)!="--")
-  
-  tr <- keep.tip(tr, which(tr$tip.label %in% node_dates$node))
-  
-  tr$tip.label %<>% paste(node_dates$date[match(., node_dates$node)], sep="_")
+  node_dates <- read_tsv(y)
+  tr <- keep.tip(tr, which(tr$tip.label %in% node_dates$gisaid_epi_isl))
+  tr$tip.label %<>% paste(node_dates$date[match(., node_dates$gisaid_epi_isl)], sep="_")
   tr
 }, timetree, tip_dates_file, SIMPLIFY=FALSE) %>%
   setNames(., strsplit(names(.), "/") %>% sapply(`[`, 2))
