@@ -22,22 +22,6 @@ trs <- mapply(function (x, y) {
 }, timetree, tip_dates_file, SIMPLIFY=FALSE) %>%
   setNames(., strsplit(names(.), "/") %>% sapply(`[`, 2))
 
-# Exclude because there is no dominant lineage and the TMRCA is too far back: Ontario
-# Exclude because of insufficient time-series data: Austria, Belgium
-# Check TMRCA (should be <0.5 years)
-# lapply(skylines, `[[`, "time") %>% sapply(max)
-# Select dominant lineage: California, France, Guangdong, Hong Kong, Hubei, Italy, 
-# Japan, Shanghai
-
-select_nodes <- c("california"="NODE_0000002",
-                  "france"="NODE_0000017",
-                  "guangdong"="NODE_0000012",
-                  "hongkong"="NODE_0000001",
-                  "hubei"="NODE_0000005",
-                  "italy"="NODE_0000008",
-                  "japan"="NODE_0000005",
-                  "shanghai"="NODE_0000001"
-)
 
 selected_trs <- trs[!(names(trs) %in% c("austria", "belgium", "ontario"))] 
 
