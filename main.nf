@@ -146,6 +146,18 @@ process download_newicks {
     """
 }
 
+
+ch_newick
+    .flatten()
+    .map { file -> tuple(get_region_newick(file.getSimpleName()), file) }
+    .set { ch_newick_grouped }
+
+def get_region_newick(newick) {
+    /// extract region name from newick file, ex: japan, hong-kong
+    newick.replaceFirst(/tree_/, "").replace(/-/, "") // making joining on clean timeseries easier later on
+}
+
+
 process download_timeseries {
     publishDir "${params.outdir}/timeseries", mode: 'copy'
 
@@ -166,6 +178,7 @@ process download_timeseries {
     """
 }
 
+
 process clean_and_transform_timeseries {
     publishDir "${params.outdir}/timeseries_cleaned", mode: 'copy'
 
@@ -180,7 +193,8 @@ process clean_and_transform_timeseries {
     file wuhan_incidence from file("$baseDir/datasets/li2020nejm_wuhan_incidence.tsv")
 
     output:
-    file "*.tsv" into ch_cleaned_timeseries
+    file "*new_cases.tsv" into ch_new_cases_cleaned_timeseries
+    file "*cumulative_cases.tsv" into ch_cumulative_cases_cleaned_timeseries
     file "*.RData" into ch_rdata_cleaned_timeseries
 
     script:
@@ -197,32 +211,40 @@ process clean_and_transform_timeseries {
     """
 }
 
-ch_cleaned_timeseries
-  .map { file -> tuple(get_prefix(file.name), file) }
-  .groupTuple()
-  .view()
 
-// process impute_infection_dates {
-//     publishDir "${params.outdir}/imputed_infection_dates"
+ch_new_cases_cleaned_timeseries
+    .flatten()
+    .map{ it -> tuple(getRegionCleanedTimeseries(it.getSimpleName()), it) }
+    .filter( ~/.+(minnesota|shanghai|iceland|japan|newyork|unitedkingdom|washington|california|guangdong|hubei|hongkong|italy).+/ )
+    .set { ch_new_cases_cleaned_timeseries_grouped }
 
-//     input:
-//     file timeseries from ch_cleaned_timeseries
-//     file newick from ch_newick_w_date_of_sampling_labels
-//     file metadata from ch_metadata
+def getRegionCleanedTimeseries(timeseries) {
+    /// extract region name from timeseries fn, ex: japan, hongkong
+    timeseries.replaceFirst(/summary_/, "").replace(/_timeseries_new_cases/, "") 
+}
 
-//     output:
-//     file "*csv" into ch_imputed_infection_dates
-
-//     script:
-//     """
-//     03_impute_infection_dates.R \
-//         ${newick} \
-//         ${metadata} \
-//         ${timeseries} \
-//     """
+ch_newick_grouped.join(ch_new_cases_cleaned_timeseries_grouped).set {ch_newick_timeseries_by_region }
 
 
-// }
+process impute_infection_dates {
+    publishDir "${params.outdir}/imputed_infection_dates"
+    tag "${region}"
+
+    input:
+    set val(region), file(newick), file(timeseries) from ch_newick_timeseries_by_region
+    file metadata from ch_metadata
+
+    output:
+    file "*csv" into ch_imputed_infection_dates
+
+    script:
+    """
+    03_impute_infection_dates.R \
+        ${newick} \
+        ${metadata} \
+        ${timeseries} \
+    """
+}
 
 
 // process rename_sequences_to_include_collection_dates {
