@@ -13,7 +13,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get -y install --no-install-recommends --no-install-suggests \
         ca-certificates software-properties-common gnupg2 gnupg1 \
       && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 \
-      && add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/' \
+      && add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/' \
       && apt-get install r-base 
 
 #RUN R -e "devtools::install_github('lucymli/EpiGenR')"
