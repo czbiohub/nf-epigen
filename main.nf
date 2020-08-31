@@ -23,6 +23,12 @@ def helpMessage() {
     Mandatory arguments:
       -profile                      Configuration profile to use. Can use multiple (comma separated)
                                     Available: conda, docker, singularity, awsbatch, test and more.
+    Tree:
+      --newicks                      Newick tree files to provide for each destination
+
+    Gisaid
+      --gisaid_metadata             metadata file downloaded from gisaid
+      --gisaid_sequences            sequences fasta file downloaded from gisaid
 
     Other options:
       --outdir                      The output directory where the results will be saved
@@ -47,7 +53,22 @@ if (params.help) {
  */
 
 // TODO nf-core: Add any reference files that are needed
-// Configurable reference genomes
+// Configurable newick files, sequences and metadata from gisaid
+
+Channel.fromPath(params.gisaid_metadata)
+    .into { ch_metadata_cleaned_timeseries; ch_metadata_impute_infection_dates }
+Channel.fromPath(params.gisaid_sequences).set{ ch_sequences }
+Channel.fromPath(params.newicks).set{ ch_newick }
+
+ch_newick
+    .flatten()
+    .map { file -> tuple(get_region_newick(file.getSimpleName()), file) }
+    .set { ch_newick_grouped }
+
+def get_region_newick(newick) {
+    /// extract region name from newick file, ex: japan, hong-kong
+    newick.replaceFirst(/tree_/, "").replace(/-/, "") // making joining on clean timeseries easier later on
+}
 //
 
 // Has the run name been specified by the user?
@@ -120,44 +141,6 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
 }
 
 
-process download_gisaid_metadata_and_sequences {
-    publishDir "${params.outdir}/gisaid", mode: 'copy'
-
-    output:
-    file "*metadata.tsv" into ch_metadata
-    file "*sequences.fasta" into ch_sequences
-
-    shell:
-    """
-    aws s3 cp s3://czb-covid-results/gisaid/metadata.tsv.gz - | gunzip -cq >metadata.tsv
-    aws s3 cp s3://czb-covid-results/gisaid/sequences.fasta.gz - | gunzip -cq >sequences.fasta
-    """
-}
-
-process download_newicks {
-    publishDir "${params.outdir}/newicks"
-
-    output:
-    file "*.nwk" into ch_newick
-
-    script:
-    """
-    aws s3 cp s3://czb-covid-results/gisaid/results/ . --recursive --exclude '*' --include '*.nwk'
-    """
-}
-
-
-ch_newick
-    .flatten()
-    .map { file -> tuple(get_region_newick(file.getSimpleName()), file) }
-    .set { ch_newick_grouped }
-
-def get_region_newick(newick) {
-    /// extract region name from newick file, ex: japan, hong-kong
-    newick.replaceFirst(/tree_/, "").replace(/-/, "") // making joining on clean timeseries easier later on
-}
-
-
 process download_timeseries {
     publishDir "${params.outdir}/timeseries", mode: 'copy'
 
@@ -188,7 +171,7 @@ process clean_and_transform_timeseries {
     file recovered_global from ch_timeseries_recovered_global
     file deaths_global from ch_timeseries_deaths_global
     file confirmed_global from ch_timeseries_confirmed_global
-    file metadata from ch_metadata
+    file metadata from ch_metadata_cleaned_timeseries
     file who_sitreps from file("$baseDir/datasets/WHO_sitreps_20200121-20200122.tsv")
     file wuhan_incidence from file("$baseDir/datasets/li2020nejm_wuhan_incidence.tsv")
 
@@ -220,7 +203,7 @@ ch_new_cases_cleaned_timeseries
 
 def getRegionCleanedTimeseries(timeseries) {
     /// extract region name from timeseries fn, ex: japan, hongkong
-    timeseries.replaceFirst(/summary_/, "").replace(/_timeseries_new_cases/, "") 
+    timeseries.replaceFirst(/summary_/, "").replace(/_timeseries_new_cases/, "")
 }
 
 ch_newick_grouped.join(ch_new_cases_cleaned_timeseries_grouped).set {ch_newick_timeseries_by_region }
@@ -232,7 +215,7 @@ process impute_infection_dates {
 
     input:
     set val(region), file(newick), file(timeseries) from ch_newick_timeseries_by_region
-    file metadata from ch_metadata
+    file metadata from ch_metadata_impute_infection_dates
 
     output:
     file "*csv" into ch_imputed_infection_dates
