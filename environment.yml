@@ -9,7 +9,6 @@ dependencies:
   # TODO nf-core: Add required software dependencies here
   - bioconda::fastqc=0.11.8
   - bioconda::multiqc=1.7
-  - conda-forge::awscli=1.18.125
   - conda-forge::r-ape=5.4
   - conda-forge::r-devtools=2.3.1
   - conda-forge::r-dplyr=1.0.0

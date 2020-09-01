@@ -2,7 +2,6 @@ FROM nfcore/base:1.10.2
 LABEL authors="Phoenix Logan Lucy Li" \
       description="Docker image containing all requirements for nf-core/epigen pipeline"
 
-
 RUN apt-get update && apt-get -y install --no-install-recommends --no-install-suggests \
         ca-certificates software-properties-common gnupg2 gnupg1 dirmngr apt-transport-https \
       && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 'E19F5F87128899B192B1A2C2AD5F960A256A04AF' \
