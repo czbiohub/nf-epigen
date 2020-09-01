@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(dplyr)
+library(EpiGenR)
 library(magrittr)
 library(readr)
 library(phytools)
@@ -45,13 +46,7 @@ timeseries <- cleaned_timeseries %>%
   lapply(filter, new_cases>0) %>%
   setNames(., names(selected_trs))
 
-get_lognormal_params <- function (MEAN, SD) {
-  sigma <- sqrt(log(1 + (SD/MEAN)^2))
-  zeta <- log(MEAN/sqrt(1+(SD/MEAN)^2))
-  return(c(zeta, sigma))
-}
-
-incub_pars <- get_lognormal_params(5.5/365, 2.1/365)
+incub_pars <- EpiGenR::get_lognormal_params(5.5/365, 2.1/365)
 shape_param <- incub_pars[1]
 scale_param <- incub_pars[2]
 set.seed(2342342)

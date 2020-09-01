@@ -56,7 +56,7 @@ if (params.help) {
 // Configurable newick files, sequences and metadata from gisaid
 
 Channel.fromPath(params.gisaid_metadata)
-    .into { ch_metadata_cleaned_timeseries; ch_metadata_impute_infection_dates }
+    .into { ch_metadata_cleaned_timeseries; ch_metadata_impute_infection_dates; ch_metadata_rename }
 Channel.fromPath(params.gisaid_sequences).set{ ch_sequences }
 Channel.fromPath(params.newicks).set{ ch_newick }
 
@@ -198,6 +198,7 @@ process clean_and_transform_timeseries {
 ch_new_cases_cleaned_timeseries
     .flatten()
     .map{ it -> tuple(getRegionCleanedTimeseries(it.getSimpleName()), it) }
+    // TODO maybe make this into a param that users can modify later on? 
     .filter( ~/.+(minnesota|shanghai|iceland|japan|newyork|unitedkingdom|washington|california|guangdong|hubei|hongkong|italy).+/ )
     .set { ch_new_cases_cleaned_timeseries_grouped }
 
@@ -218,7 +219,7 @@ process impute_infection_dates {
     file metadata from ch_metadata_impute_infection_dates
 
     output:
-    file "*csv" into ch_imputed_infection_dates
+    file "*.txt" into ch_imputed_infection_dates
 
     script:
     """
@@ -230,69 +231,68 @@ process impute_infection_dates {
 }
 
 
-// process rename_sequences_to_include_collection_dates {
-//     publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
+process rename_sequences_to_include_collection_dates {
+    publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
 
-//     input:
-//     file metadata from ch_metadata
-//     file sequences from ch_sequences
-//     file rdata from ch_rdata_cleaned_timeseries
-//     file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
+    input:
+    file metadata from ch_metadata_rename
+    file sequences from ch_sequences
+    file rdata from ch_rdata_cleaned_timeseries
+    file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
 
-//     output:
-//     file "msa/*/*.fasta" into ch_renamed_fastas
-//     file "*.RData" into ch_rdata_renamed_sequences
+    output:
+    file "msa/*/*.fasta" into ch_renamed_fastas
+    file "*.RData" into ch_rdata_renamed_sequences
 
-//     script:
-//     """
-//     02_filter_seq.R \
-//         ${rdata} \
-//         ${metadata} \
-//         ${sequences} \
-//         ${outgroup_fasta}
-//     """
-// }
+    script:
+    """
+    02_filter_seq.R \
+        ${rdata} \
+        ${metadata} \
+        ${sequences} \
+        ${outgroup_fasta}
+    """
+}
 
 /*
  * Parse software version numbers
  */
-// process get_software_versions {
-//     publishDir "${params.outdir}/pipeline_info", mode: 'copy',
-//         saveAs: { filename ->
-//             if (filename.indexOf(".csv") > 0) filename
-//             else null
-//         }
+process get_software_versions {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy',
+        saveAs: { filename ->
+            if (filename.indexOf(".csv") > 0) filename
+            else null
+        }
 
-//     output:
-//     file 'software_versions_mqc.yaml' into software_versions_yaml
-//     file "software_versions.csv"
+    output:
+    file 'software_versions_mqc.yaml' into software_versions_yaml
+    file "software_versions.csv"
 
-//     script:
-//     // TODO nf-core: Get all tools to print their version number here
-//     """
-//     echo $workflow.manifest.version > v_pipeline.txt
-//     echo $workflow.nextflow.version > v_nextflow.txt
-//     scrape_software_versions.py &> software_versions_mqc.yaml
-//     """
-// }
+    script:
+    // TODO nf-core: Get all tools to print their version number here
+    """
+    echo $workflow.manifest.version > v_pipeline.txt
+    echo $workflow.nextflow.version > v_nextflow.txt
+    scrape_software_versions.py &> software_versions_mqc.yaml
+    """
+}
 
-/*
- * STEP 3 - Output Description HTML
- */
-// process output_documentation {
-//     publishDir "${params.outdir}/pipeline_info", mode: 'copy'
 
-//     input:
-//     file output_docs from ch_output_docs
+ // Output Description HTML
+process output_documentation {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy'
 
-//     output:
-//     file "results_description.html"
+    input:
+    file output_docs from ch_output_docs
 
-//     script:
-//     """
-//     markdown_to_html.r $output_docs results_description.html
-//     """
-// }
+    output:
+    file "results_description.html"
+
+    script:
+    """
+    markdown_to_html.r $output_docs results_description.html
+    """
+}
 
 
 
