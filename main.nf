@@ -210,13 +210,17 @@ def getRegionCleanedTimeseries(timeseries) {
 ch_newick_grouped.join(ch_new_cases_cleaned_timeseries_grouped).set {ch_newick_timeseries_by_region }
 
 
+// adding metadata to each entry of cleaned timeseries and newick
+ch_newick_timeseries_by_region
+    .combine(ch_metadata_impute_infection_dates)
+    .set{ ch_newick_timeseries_by_region_w_metadata }
+
 process impute_infection_dates {
     publishDir "${params.outdir}/imputed_infection_dates"
     tag "${region}"
 
     input:
-    set val(region), file(newick), file(timeseries) from ch_newick_timeseries_by_region
-    file metadata from ch_metadata_impute_infection_dates
+    set val(region), file(newick), file(timeseries), file(metadata) from ch_newick_timeseries_by_region_w_metadata
 
     output:
     file "*.txt" into ch_imputed_infection_dates
@@ -228,31 +232,7 @@ process impute_infection_dates {
         ${metadata} \
         ${timeseries} \
     """
-}
-
-
-process rename_sequences_to_include_collection_dates {
-    publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
-
-    input:
-    file metadata from ch_metadata_rename
-    file sequences from ch_sequences
-    file rdata from ch_rdata_cleaned_timeseries
-    file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
-
-    output:
-    file "msa/*/*.fasta" into ch_renamed_fastas
-    file "*.RData" into ch_rdata_renamed_sequences
-
-    script:
-    """
-    02_filter_seq.R \
-        ${rdata} \
-        ${metadata} \
-        ${sequences} \
-        ${outgroup_fasta}
-    """
-}
+} 
 
 /*
  * Parse software version numbers
