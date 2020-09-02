@@ -23,6 +23,12 @@ def helpMessage() {
     Mandatory arguments:
       -profile                      Configuration profile to use. Can use multiple (comma separated)
                                     Available: conda, docker, singularity, awsbatch, test and more.
+    Tree:
+      --newicks                      Newick tree files to provide for each destination
+
+    Gisaid
+      --gisaid_metadata             metadata file downloaded from gisaid
+      --gisaid_sequences            sequences fasta file downloaded from gisaid
 
     Other options:
       --outdir                      The output directory where the results will be saved
@@ -47,7 +53,22 @@ if (params.help) {
  */
 
 // TODO nf-core: Add any reference files that are needed
-// Configurable reference genomes
+// Configurable newick files, sequences and metadata from gisaid
+
+Channel.fromPath(params.gisaid_metadata)
+    .into { ch_metadata_cleaned_timeseries; ch_metadata_impute_infection_dates; ch_metadata_rename }
+Channel.fromPath(params.gisaid_sequences).set{ ch_sequences }
+Channel.fromPath(params.newicks).set{ ch_newick }
+
+ch_newick
+    .flatten()
+    .map { file -> tuple(get_region_newick(file.getSimpleName()), file) }
+    .set { ch_newick_grouped }
+
+def get_region_newick(newick) {
+    /// extract region name from newick file, ex: japan, hong-kong
+    newick.replaceFirst(/tree_/, "").replace(/-/, "") // making joining on clean timeseries easier later on
+}
 //
 
 // Has the run name been specified by the user?
@@ -120,20 +141,6 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
 }
 
 
-process download_gisaid_metadata_and_sequences {
-    publishDir "${params.outdir}/gisaid", mode: 'copy'
-
-    output:
-    file "*metadata.tsv" into ch_metadata
-    file "*sequences.fasta" into ch_sequences
-
-    shell:
-    """
-    aws s3 cp s3://czb-covid-results/gisaid/metadata.tsv.gz - | gunzip -cq >metadata.tsv
-    aws s3 cp s3://czb-covid-results/gisaid/sequences.fasta.gz - | gunzip -cq >sequences.fasta
-    """
-}
-
 process download_timeseries {
     publishDir "${params.outdir}/timeseries", mode: 'copy'
 
@@ -154,6 +161,7 @@ process download_timeseries {
     """
 }
 
+
 process clean_and_transform_timeseries {
     publishDir "${params.outdir}/timeseries_cleaned", mode: 'copy'
 
@@ -163,12 +171,13 @@ process clean_and_transform_timeseries {
     file recovered_global from ch_timeseries_recovered_global
     file deaths_global from ch_timeseries_deaths_global
     file confirmed_global from ch_timeseries_confirmed_global
-    file metadata from ch_metadata
+    file metadata from ch_metadata_cleaned_timeseries
     file who_sitreps from file("$baseDir/datasets/WHO_sitreps_20200121-20200122.tsv")
     file wuhan_incidence from file("$baseDir/datasets/li2020nejm_wuhan_incidence.tsv")
 
     output:
-    file "*.tsv" into ch_cleaned_timeseries
+    file "*new_cases.tsv" into ch_new_cases_cleaned_timeseries
+    file "*cumulative_cases.tsv" into ch_cumulative_cases_cleaned_timeseries
     file "*.RData" into ch_rdata_cleaned_timeseries
 
     script:
@@ -186,55 +195,70 @@ process clean_and_transform_timeseries {
 }
 
 
-process rename_sequences_to_include_collection_dates {
-    publishDir "${params.outdir}/renamed_sequences", mode: 'copy'
+ch_new_cases_cleaned_timeseries
+    .flatten()
+    .map{ it -> tuple(getRegionCleanedTimeseries(it.getSimpleName()), it) }
+    // TODO maybe make this into a param that users can modify later on? 
+    .filter( ~/.+(minnesota|shanghai|iceland|japan|newyork|unitedkingdom|washington|california|guangdong|hubei|hongkong|italy).+/ )
+    .set { ch_new_cases_cleaned_timeseries_grouped }
+
+def getRegionCleanedTimeseries(timeseries) {
+    /// extract region name from timeseries fn, ex: japan, hongkong
+    timeseries.replaceFirst(/summary_/, "").replace(/_timeseries_new_cases/, "")
+}
+
+ch_newick_grouped.join(ch_new_cases_cleaned_timeseries_grouped).set {ch_newick_timeseries_by_region }
+
+
+// adding metadata to each entry of cleaned timeseries and newick
+ch_newick_timeseries_by_region
+    .combine(ch_metadata_impute_infection_dates)
+    .set{ ch_newick_timeseries_by_region_w_metadata }
+
+process impute_infection_dates {
+    publishDir "${params.outdir}/imputed_infection_dates"
+    tag "${region}"
 
     input:
-    file metadata from ch_metadata
-    file sequences from ch_sequences
-    file rdata from ch_rdata_cleaned_timeseries
-    file outgroup_fasta from file("$baseDir/datasets/MG772933.1.fasta")
+    set val(region), file(newick), file(timeseries), file(metadata) from ch_newick_timeseries_by_region_w_metadata
 
     output:
-    file "msa/*/*.fasta" into ch_renamed_fastas
-    file "*.RData" into ch_rdata_renamed_sequences
+    file "*.txt" into ch_imputed_infection_dates
 
     script:
     """
-    02_filter_seq.R \
-        ${rdata} \
+    03_impute_infection_dates.R \
+        ${newick} \
         ${metadata} \
-        ${sequences} \
-        ${outgroup_fasta}
+        ${timeseries} \
     """
-}
+} 
 
 /*
  * Parse software version numbers
  */
-// process get_software_versions {
-//     publishDir "${params.outdir}/pipeline_info", mode: 'copy',
-//         saveAs: { filename ->
-//             if (filename.indexOf(".csv") > 0) filename
-//             else null
-//         }
+process get_software_versions {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy',
+        saveAs: { filename ->
+            if (filename.indexOf(".csv") > 0) filename
+            else null
+        }
 
-//     output:
-//     file 'software_versions_mqc.yaml' into software_versions_yaml
-//     file "software_versions.csv"
+    output:
+    file 'software_versions_mqc.yaml' into software_versions_yaml
+    file "software_versions.csv"
 
-//     script:
-//     // TODO nf-core: Get all tools to print their version number here
-//     """
-//     echo $workflow.manifest.version > v_pipeline.txt
-//     echo $workflow.nextflow.version > v_nextflow.txt
-//     scrape_software_versions.py &> software_versions_mqc.yaml
-//     """
-// }
+    script:
+    // TODO nf-core: Get all tools to print their version number here
+    """
+    echo $workflow.manifest.version > v_pipeline.txt
+    echo $workflow.nextflow.version > v_nextflow.txt
+    scrape_software_versions.py &> software_versions_mqc.yaml
+    """
+}
 
-/*
- * STEP 3 - Output Description HTML
- */
+
+ // Output Description HTML
 process output_documentation {
     publishDir "${params.outdir}/pipeline_info", mode: 'copy'
 
@@ -285,7 +309,7 @@ workflow.onComplete {
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-  
+
     // Check if we are only sending emails on failure
     email_address = params.email
     if (!params.email && params.email_on_fail && !workflow.success) {
