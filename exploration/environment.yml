@@ -1,0 +1,15 @@
+name: pyro_epigen
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pip:
+    - biopython==1.77
+    - numpy==1.19.1
+    - pyro-api==0.1.2
+    - pyro-ppl==1.4.0
+    - torch==1.6.0
+    - torchvision==0.7.0
+    - tqdm==4.48.2
+    - nextstrain-augur
