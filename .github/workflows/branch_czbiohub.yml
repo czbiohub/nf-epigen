@@ -13,4 +13,4 @@ jobs:
       - name: Check PRs
         if: github.repository == 'czbiohub/nf-epigen'
         run: |
-          { [[ $(git remote get-url origin) == "*czbiohub/nf-epigen" ]] && [[ $GITHUB_HEAD_REF = "dev" ]]; } || [[ $GITHUB_HEAD_REF == "patch" ]]
+          { [[ $(git remote get-url origin) == "czbiohub/nf-epigen" ]] && [[ $GITHUB_HEAD_REF = "dev" ]]; } || [[ $GITHUB_HEAD_REF == "patch" ]]
