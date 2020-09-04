@@ -1,6 +1,6 @@
 # ![nf-core/epigen](docs/images/nf-core-epigen_logo.png)
 
-** Using both phylogenetic and time-series data from the COVID19 pandemic to estimate number of missing infections and predict forward epidemic trajectory. **.
+**Using both phylogenetic and time-series data from the COVID19 pandemic to estimate number of missing infections and predict forward epidemic trajectory.**.
 
 [![Build Status](https://travis-ci.com/nf-core/epigen.svg?branch=master)](https://travis-ci.com/nf-core/epigen)
 [![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A50.32.0-brightgreen.svg)](https://www.nextflow.io/)
