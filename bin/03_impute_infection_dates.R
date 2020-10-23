@@ -13,21 +13,6 @@ tip_dates_file <- args[2] # ex: "~/code/nf-core-epigen/results/gisaid/metadata.t
 cleaned_timeseries <- file.path(args[3]) # ex: "~/code/nf-core-epigen/results/timeseries_cleaned/summary_california_timeseries_new_cases.tsv"
 
 
-# reformat labels on trees to include date of sampling
-# -----------------------------------------------------
-trs <- mapply(function (x, y) {
-  tr <- read.newick(x)
-  node_dates <- read_tsv(y)
-  tr <- keep.tip(tr, which(tr$tip.label %in% node_dates$gisaid_epi_isl))
-  tr$tip.label %<>% paste(node_dates$date[match(., node_dates$gisaid_epi_isl)], sep="_")
-  tr
-}, timetree, tip_dates_file, SIMPLIFY=FALSE) %>%
-  setNames(., strsplit(names(.), "/") %>% sapply(`[`, 2))
-
-
-selected_trs <- trs[!(names(trs) %in% c("austria", "belgium", "ontario"))] 
-
-
 # impute dates of infections
 # -----------------------------------------------------
 infer_dates_from_timeseries <- function (full_timeseries, lognormal_mean, lognormal_sd) {
@@ -42,15 +27,14 @@ infer_dates_from_timeseries <- function (full_timeseries, lognormal_mean, lognor
 
 
 timeseries <- cleaned_timeseries %>% 
-  lapply(read_tsv) %>%
-  lapply(filter, new_cases>0) %>%
-  setNames(., names(selected_trs))
+  read_tsv %>%
+  filter(new_cases>0)
 
 incub_pars <- EpiGenR::get_lognormal_params(5.5/365, 2.1/365)
 shape_param <- incub_pars[1]
 scale_param <- incub_pars[2]
 set.seed(2342342)
-inferred_dates <- table(lapply(timeseries, infer_dates_from_timeseries, shape_param, scale_param))
+inferred_dates <- infer_dates_from_timeseries(timeseries, shape_param, scale_param)
 output_timeseries <- get_data(epi=inferred_dates) %>% 
   setNames(c("date", "new_cases")) %>%
   mutate(date=as.Date(date_decimal(date)))
