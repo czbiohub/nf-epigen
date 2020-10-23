@@ -237,24 +237,24 @@ process impute_infection_dates {
 }
 
 
-// process seir_model {
-//     publishDir "$params.outdir/seir_model"
+process seir_model {
+    publishDir "$params.outdir/seir_model"
 
-//     input:
-//     set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_seir_model_inputs
+    input:
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_seir_model_inputs
 
-//     output:
-//     set file(results) into seir_results
+    output:
+    set file(results) into seir_results
 
-//     script:
-//     results = "${region}_results.csv"
-//     """
-//     python run_seir_model.py \
-//       --metadata ${metdata} \
-//       --tree ${newick} \
-//       --imputed_infection_dates ${imputed_infection_dates}
-//     """
-// }
+    script:
+    results = "${region}_results.csv"
+    """
+    python run_seir_model.py \
+      --metadata ${metdata} \
+      --tree ${newick} \
+      --imputed_infection_dates ${imputed_infection_dates}
+    """
+}
 
 /*
  * Parse software version numbers
