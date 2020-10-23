@@ -69,7 +69,7 @@ def get_region_newick(newick) {
     /// extract region name from newick file, ex: japan, hong-kong
     newick.replaceFirst(/tree_/, "").replace(/-/, "") // making joining on clean timeseries easier later on
 }
-//
+
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -198,7 +198,7 @@ process clean_and_transform_timeseries {
 ch_new_cases_cleaned_timeseries
     .flatten()
     .map{ it -> tuple(getRegionCleanedTimeseries(it.getSimpleName()), it) }
-    // TODO maybe make this into a param that users can modify later on? 
+    // TODO maybe make this into a param that users can modify later on?
     .filter( ~/.+(minnesota|shanghai|iceland|japan|newyork|unitedkingdom|washington|california|guangdong|hubei|hongkong|italy).+/ )
     .set { ch_new_cases_cleaned_timeseries_grouped }
 
@@ -207,13 +207,14 @@ def getRegionCleanedTimeseries(timeseries) {
     timeseries.replaceFirst(/summary_/, "").replace(/_timeseries_new_cases/, "")
 }
 
+
 ch_newick_grouped.join(ch_new_cases_cleaned_timeseries_grouped).set {ch_newick_timeseries_by_region }
 
-
-// adding metadata to each entry of cleaned timeseries and newick
+//adding metadata to each entry of cleaned timeseries and newick
 ch_newick_timeseries_by_region
     .combine(ch_metadata_impute_infection_dates)
     .set{ ch_newick_timeseries_by_region_w_metadata }
+
 
 process impute_infection_dates {
     publishDir "${params.outdir}/imputed_infection_dates"
@@ -223,16 +224,39 @@ process impute_infection_dates {
     set val(region), file(newick), file(timeseries), file(metadata) from ch_newick_timeseries_by_region_w_metadata
 
     output:
-    file "*.txt" into ch_imputed_infection_dates
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates) into ch_seir_model_inputs
 
     script:
+    imputed_infection_dates = "summary_${region}_timeseries_new_cases_value_counts.txt"
     """
     03_impute_infection_dates.R \
         ${newick} \
         ${metadata} \
         ${timeseries} \
     """
-} 
+}
+
+ch_imputed_infection_dates.view()
+
+
+process seir_model {
+    publishDir "$params.outdir/seir_model"
+
+    input:
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_seir_model_inputs
+
+    output:
+    set file(results) into seir_results
+
+    script:
+    results = "${region}_results.csv"
+    """
+    python run_seir_model.py \
+      --metadata ${metdata} \
+      --tree ${newick} \
+      --imputed_infection_dates ${imputed_infection_dates}
+    """
+}
 
 /*
  * Parse software version numbers
