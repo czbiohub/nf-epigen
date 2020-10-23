@@ -247,12 +247,12 @@ process seir_model {
     set file(results) into seir_results
 
     script:
-    results = "${region}_results.csv"
+    results = "${region}_mcmc_output.txt"
     """
-    python run_seir_model.py \
-      --metadata ${metdata} \
+    seir_model.py \
+      --metadata ${metadata} \
       --tree ${newick} \
-      --imputed_infection_dates ${imputed_infection_dates}
+      --infection_dates ${imputed_infection_dates} > ${results}
     """
 }
 
