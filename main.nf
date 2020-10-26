@@ -239,12 +239,13 @@ process impute_infection_dates {
 
 process seir_model {
     publishDir "$params.outdir/seir_model"
+    container = "czbiohub/epigen-python"
 
     input:
     set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_seir_model_inputs
 
     output:
-    set file(results) into seir_results
+    file(results) into seir_results
 
     script:
     results = "${region}_mcmc_output.txt"
