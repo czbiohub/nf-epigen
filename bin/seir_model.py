@@ -101,13 +101,9 @@ def main():
     last_tip_date = metadata["decimal_date"].max()
     leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(phylogeny_newick)
     shift = last_tip_date - max(leaf_times)
-    leaf_times = leaf_times + shift
-    coal_times = coal_times + shift
-    times = torch.cat([coal_times, leaf_times])
-    signs = torch.cat([-torch.ones_like(coal_times), torch.ones_like(leaf_times)])
-    times, index = times.sort(0)
-    signs = signs[index]
-    lineages = signs.flip([0]).cumsum(0).flip([0])
+    first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
+    leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
+    coal_times = (coal_times + shift - first_timeseries_date)*365.25
 
     model = SuperspreadingSEIRModel(
         population=int(4e7),
