@@ -78,7 +78,38 @@ def main():
     parser.add_argument(
         "--infection_dates", help="timeseries of new cases value counts"
     )
-    parser.add_argument("--metadata", help="metadata.tsv file from gisaid")
+    parser.add_argument("--metadata", help="metadata.tsv file from gisaid", required=True)
+    
+    parser.add_argument(
+        "--population",
+        help="the total population of a single-region (S + I + R)",
+        required=True,
+        type=float
+    )
+    parser.add_argument(
+        "--num_samples",
+        help="Number of posterior samples to draw via mcmc",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--haar_full_mass",
+        help="Number of low frequency Haar components to include in the full mass matrix.",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--incubation_time",
+        help="Mean incubation time (duration in state E)",
+        required=True,
+        type=float
+    )
+    parser.add_argument(
+        "--recovery_time",
+        help="Mean recovery time (duration in state I)",
+        required=True,
+        type=float
+    )
 
     args = parser.parse_args()
 
@@ -106,15 +137,15 @@ def main():
     coal_times = (coal_times + shift - first_timeseries_date)*365.25
 
     model = SuperspreadingSEIRModel(
-        population=int(4e7),
-        incubation_time=5.5,
-        recovery_time=14.0,
+        population=int(args.population),
+        incubation_time=args.incubation_time,
+        recovery_time=args.recovery_time,
         data=new_cases,
         leaf_times=leaf_times,
         coal_times=coal_times,
     )
 
-    mcmc = model.fit_mcmc(num_samples=200, haar_full_mass=7)
+    mcmc = model.fit_mcmc(num_samples=args.num_samples, haar_full_mass=args.haar_full_mass)
 
     mcmc.summary()
 

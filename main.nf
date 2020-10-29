@@ -24,7 +24,14 @@ def helpMessage() {
       -profile                      Configuration profile to use. Can use multiple (comma separated)
                                     Available: conda, docker, singularity, awsbatch, test and more.
     Tree:
-      --newicks                      Newick tree files to provide for each destination
+      --newicks                     Newick tree files to provide for each destination
+
+    Model Parameters:
+      --incubation_time             Mean incubation time (duration in state E)
+      --recovery_time               Mean recovery time (duration in state I)
+      --haar_full_mass              Number of low frequency Haar components to include in the full mass matrix.
+      --num_samples_csv             Number of posterior samples to draw via mcmc (if running for multiple regions)
+      --population_csv              the total population of a single-region (S + I + R) (if running for multiple regions)
 
     Gisaid
       --gisaid_metadata             metadata file downloaded from gisaid
@@ -54,6 +61,20 @@ if (params.help) {
 
 // TODO nf-core: Add any reference files that are needed
 // Configurable newick files, sequences and metadata from gisaid
+
+// read in model parameters
+
+Channel.fromPath(params.population_csv)
+    .splitCsv(header: true)
+    .map {row -> tuple(row.region, row.population)}
+    .ifEmpty { exit 1, "population.csv (${params.population_csv}) was empty"}
+    .set { ch_population }
+
+Channel.fromPath(params.num_samples_csv)
+    .splitCsv(header: true)
+    .map {row -> tuple(row.region, row.num_samples)}
+    .ifEmpty { exit 1, "num_samples.csv (${params.num_samples_csv}) was empty"}
+    .set { ch_num_samples }
 
 Channel.fromPath(params.gisaid_metadata)
     .into { ch_metadata_cleaned_timeseries; ch_metadata_impute_infection_dates; ch_metadata_rename }
@@ -216,6 +237,7 @@ ch_newick_timeseries_by_region
     .set{ ch_newick_timeseries_by_region_w_metadata }
 
 
+
 process impute_infection_dates {
     publishDir "${params.outdir}/imputed_infection_dates"
     tag "${region}"
@@ -236,13 +258,15 @@ process impute_infection_dates {
     """
 }
 
+ch_seir_model_inputs.join(ch_population).join(ch_num_samples).set{ ch_region_specific_model_inputs }
+
 
 process seir_model {
     publishDir "$params.outdir/seir_model"
     container = "czbiohub/epigen-python"
 
     input:
-    set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_seir_model_inputs
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates), val(population), val(num_samples) from ch_region_specific_model_inputs
 
     output:
     file(results) into seir_results
@@ -253,9 +277,15 @@ process seir_model {
     seir_model.py \
       --metadata ${metadata} \
       --tree ${newick} \
-      --infection_dates ${imputed_infection_dates} > ${results}
+      --infection_dates ${imputed_infection_dates} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --incubation_time ${params.incubation_time} \
+      --recovery_time ${params.recovery_time} > ${results}
     """
 }
+
 
 /*
  * Parse software version numbers
