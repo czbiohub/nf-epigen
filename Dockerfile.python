@@ -1,0 +1,7 @@
+FROM nfcore/base:1.10.2
+LABEL authors="Phoenix Logan Lucy Li" \
+      description="Docker image containing all requirements for nf-core/epigen pipeline"
+
+COPY environment_python.yml /
+RUN conda env create -f /environment_python.yml && conda clean -a
+ENV PATH /opt/conda/envs/nf-core-epigen-python-1.0dev/bin:$PATH

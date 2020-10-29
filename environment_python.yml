@@ -1,0 +1,22 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: nf-core-epigen-python-1.0dev
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - pytorch
+dependencies:
+  # TODO nf-core: Add required software dependencies here
+  - bioconda::fastqc=0.11.8
+  - bioconda::multiqc=1.7
+  - conda-forge::biopython==1.77
+  - conda-forge::numpy==1.19.1
+  - pytorch::torchvision==0.7.0
+  - conda-forge::tqdm==4.48.2
+  - bioconda::augur==10.0.2
+  - pip:
+    - pyro-api==0.1.2
+    - pyro-ppl==1.4.0
+    - torch==1.6.0
+    - torchvision==0.1.8
