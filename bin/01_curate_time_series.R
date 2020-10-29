@@ -94,7 +94,7 @@ cumulative_cases <-
   group_modify(function (x, ...) {
     # check for decreases in cumulative number of cases
     if (nrow(x)==1) return (x)
-    if ((any(diff(x$cumulative_cases)<0))) {
+    if ((any(diff(x$cumulative_cases)<0, na.rm=TRUE))) {
       for (i in 2:nrow(x)) {
         if ((x$cumulative_cases[i])<(x$cumulative_cases[i-1])) {
           x$cumulative_cases[i] <- x$cumulative_cases[i-1]
