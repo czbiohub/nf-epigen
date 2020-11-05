@@ -169,11 +169,10 @@ def main():
 
     # add optional kwargs
     if args.incubation_time:
-        print("in incubation time")
-        compartment_model_params["incubation_time"]: args.incubation_time
+        compartment_model_params["incubation_time"] = args.incubation_time
 
     if args.mortality_rate:
-        compartment_model_params["mortality_rate"]: args.mortality_rate
+        compartment_model_params["mortality_rate"] = args.mortality_rate
 
     model = compartment_model(**compartment_model_params)
 
