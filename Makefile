@@ -13,6 +13,11 @@ run-nf-epigen-newicks:
 	--newicks ${NEWICKS} \
 	--gisaid_metadata ${GISAID_METADATA} \
 	--gisaid_sequences ${GISAID_SEQUENCES} \
+	--model_type SuperspreadingSEIRModel \
 	--population_csv ${POPULATION_CSV} \
-	--num_samples_csv ${NUM_SAMPLES_CSV}
+	--num_samples_csv ${NUM_SAMPLES_CSV} \
+	--incubation_time 5.5 \
+	--recovery_time 14 \
+	--mortality_rate 2 \
+
 

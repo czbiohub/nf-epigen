@@ -79,7 +79,23 @@ def main():
         "--infection_dates", help="timeseries of new cases value counts"
     )
     parser.add_argument("--metadata", help="metadata.tsv file from gisaid", required=True)
-    
+
+    parser.add_argument(
+        "--model_type",
+        help="stochastic discrete-time discrete-state model",
+        choices=[
+            "SimpleSIRModel",
+            "SimpleSEIRModel",
+            "SimpleSEIRDModel",
+            "OverdispersedSIRModel",
+            "OverdispersedSEIRModel",
+            "SuperspreadingSIRModel",
+            "SuperspreadingSEIRModel",
+            "HeterogeneousSIRModel"
+        ]
+        required=True,
+        type=str
+    )
     parser.add_argument(
         "--population",
         help="the total population of a single-region (S + I + R)",
@@ -101,13 +117,18 @@ def main():
     parser.add_argument(
         "--incubation_time",
         help="Mean incubation time (duration in state E)",
-        required=True,
+        required=False,
         type=float
     )
     parser.add_argument(
         "--recovery_time",
         help="Mean recovery time (duration in state I)",
         required=True,
+        type=float
+    )
+    parser.add_argument(
+        "--mortality_rate",
+        help="Mean mortality rate",
         type=float
     )
 
@@ -136,16 +157,29 @@ def main():
     leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
     coal_times = (coal_times + shift - first_timeseries_date)*365.25
 
-    model = SuperspreadingSEIRModel(
-        population=int(args.population),
-        incubation_time=args.incubation_time,
-        recovery_time=args.recovery_time,
-        data=new_cases,
-        leaf_times=leaf_times,
-        coal_times=coal_times,
-    )
+    compartment_model = getattr(pyro.contrib.epidemiology.models, args.model_type)
+    compartment_model_params = {
+        "population": int(args.population),
+        "recovery_time": args.recovery_time,
+        "data": new_cases,
+        "leaf_times": leaf_times,
+        "coal_times": coal_times,
+    }
 
-    mcmc = model.fit_mcmc(num_samples=args.num_samples, haar_full_mass=args.haar_full_mass)
+    # add optional kwargs
+    if args.incubation_time:
+        compartment_model_params["incubation_time"]: args.incubation_time
+
+    if args.mortality_rate:
+        compartment_model_params["mortality_rate"]: args.mortality_rate
+
+    model = compartment_model(**compartment_model_params)
+
+    mcmc_fit_params = {
+        "num_samples": args.num_samples,
+        "haar_full_mass": args.haar_full_mass
+    }
+    mcmc = model.fit_mcmc(**mcmc_fit_params)
 
     mcmc.summary()
 

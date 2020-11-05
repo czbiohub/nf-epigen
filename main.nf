@@ -29,9 +29,11 @@ def helpMessage() {
     Model Parameters:
       --incubation_time             Mean incubation time (duration in state E)
       --recovery_time               Mean recovery time (duration in state I)
+      --mortality_rate              Mean mortality rate
       --haar_full_mass              Number of low frequency Haar components to include in the full mass matrix.
       --num_samples_csv             Number of posterior samples to draw via mcmc (if running for multiple regions)
       --population_csv              the total population of a single-region (S + I + R) (if running for multiple regions)
+      --compartment_model           stochastic discrete-time discrete-state model
 
     Gisaid
       --gisaid_metadata             metadata file downloaded from gisaid
@@ -266,23 +268,21 @@ process seir_model {
     container = "czbiohub/epigen-python"
 
     input:
-    set val(region), file(newick), file(metadata), file(imputed_infection_dates), val(population), val(num_samples) from ch_region_specific_model_inputs
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_region_specific_model_inputs
 
     output:
     file(results) into seir_results
 
     script:
     results = "${region}_mcmc_output.txt"
+
     """
     seir_model.py \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
-      --population ${population} \
-      --num_samples ${num_samples} \
-      --haar_full_mass ${params.haar_full_mass} \
-      --incubation_time ${params.incubation_time} \
-      --recovery_time ${params.recovery_time} > ${results}
+      --model_type ${params.model_type} \
+      --model_params ${params.model_params} \
     """
 }
 
