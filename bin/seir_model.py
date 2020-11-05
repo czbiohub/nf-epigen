@@ -92,7 +92,7 @@ def main():
             "SuperspreadingSIRModel",
             "SuperspreadingSEIRModel",
             "HeterogeneousSIRModel"
-        ]
+        ],
         required=True,
         type=str
     )
@@ -161,6 +161,7 @@ def main():
     compartment_model_params = {
         "population": int(args.population),
         "recovery_time": args.recovery_time,
+        # "incubation_time": args.incubation_time,
         "data": new_cases,
         "leaf_times": leaf_times,
         "coal_times": coal_times,
@@ -168,6 +169,7 @@ def main():
 
     # add optional kwargs
     if args.incubation_time:
+        print("in incubation time")
         compartment_model_params["incubation_time"]: args.incubation_time
 
     if args.mortality_rate:

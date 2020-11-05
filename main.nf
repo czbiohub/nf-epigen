@@ -268,13 +268,28 @@ process seir_model {
     container = "czbiohub/epigen-python"
 
     input:
-    set val(region), file(newick), file(metadata), file(imputed_infection_dates) from ch_region_specific_model_inputs
+    set val(region), file(newick), file(metadata), file(imputed_infection_dates), val(population), val(num_samples) from ch_region_specific_model_inputs
 
     output:
     file(results) into seir_results
 
     script:
     results = "${region}_mcmc_output.txt"
+    if (params.model_type=="SimpleSEIRDModel") {
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --incubation_time ${params.incubation_time} \
+      --recovery_time ${params.recovery_time} \
+      --mortality_rate ${params.mortality_rate} > ${results}
+    """
+    } else {
 
     """
     seir_model.py \
@@ -282,8 +297,13 @@ process seir_model {
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
       --model_type ${params.model_type} \
-      --model_params ${params.model_params} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --incubation_time ${params.incubation_time} \
+      --recovery_time ${params.recovery_time} > ${results}
     """
+    }
 }
 
 
