@@ -275,7 +275,7 @@ process seir_model {
 
     script:
     results = "${region}_mcmc_output.txt"
-    if (params.model_type=="SimpleSEIRDModel") {
+    if (params.mortality_rate && params.incubation_time) {
     """
     seir_model.py \
       --metadata ${metadata} \
@@ -289,8 +289,7 @@ process seir_model {
       --recovery_time ${params.recovery_time} \
       --mortality_rate ${params.mortality_rate} > ${results}
     """
-    } else {
-
+    } else if (params.incubation_time && !params.mortality_rate) {
     """
     seir_model.py \
       --metadata ${metadata} \
@@ -301,6 +300,31 @@ process seir_model {
       --num_samples ${num_samples} \
       --haar_full_mass ${params.haar_full_mass} \
       --incubation_time ${params.incubation_time} \
+      --recovery_time ${params.recovery_time} > ${results}
+    """
+    } else if (params.mortality_rate && !params.incubation_time) {
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --mortality_rate ${params.mortality_rate} \
+      --recovery_time ${params.recovery_time} > ${results}
+    """
+    } else { //no incubation or mortality rate
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
       --recovery_time ${params.recovery_time} > ${results}
     """
     }
