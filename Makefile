@@ -6,6 +6,18 @@ GISAID_SEQUENCES=gisaid/sequences.tsv
 POPULATION_CSV=model_params/population.csv
 NUM_SAMPLES_CSV=model_params/num_samples.csv
 
+test-python:
+	python bin/seir_model.py \
+	--metadata ${GISAID_METADATA} \
+	--infection_dates results/imputed_infection_dates/summary_california_timeseries_new_cases_value_counts.txt \
+	--tree results/imputed_infection_dates/tree_california.nwk \
+	--model_type SuperspreadingSEIRModel \
+	--population 39e7 \
+	--num_samples 100 \
+	--incubation_time 5.5 \
+	--recovery_time 14 \
+	--haar_full_mass 7
+
 run-nf-epigen-superspreadingseirmodel:
 	nextflow run main.nf \
 	-profile docker \

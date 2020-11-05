@@ -150,21 +150,12 @@ def main():
     metadata["date"] = pd.to_datetime(metadata["date"])
     metadata["decimal_date"] = metadata["date"].apply(toYearFraction)
 
-    last_tip_date = metadata["decimal_date"].max()
-    leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(phylogeny_newick)
-    shift = last_tip_date - max(leaf_times)
-    first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
-    leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
-    coal_times = (coal_times + shift - first_timeseries_date)*365.25
-
     compartment_model = getattr(pyro.contrib.epidemiology.models, args.model_type)
     compartment_model_params = {
         "population": int(args.population),
         "recovery_time": args.recovery_time,
         # "incubation_time": args.incubation_time,
         "data": new_cases,
-        "leaf_times": leaf_times,
-        "coal_times": coal_times,
     }
 
     # add optional kwargs
@@ -173,6 +164,17 @@ def main():
 
     if args.mortality_rate:
         compartment_model_params["mortality_rate"] = args.mortality_rate
+
+    if args.model_type == "SuperspreadingSEIRModel":
+        last_tip_date = metadata["decimal_date"].max()
+        leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(phylogeny_newick)
+        shift = last_tip_date - max(leaf_times)
+        first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
+        leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
+        coal_times = (coal_times + shift - first_timeseries_date)*365.25
+        
+        compartment_model_params["leaf_times"] = leaf_times,
+        compartment_model_params["coal_times"] = coal_times,
 
     model = compartment_model(**compartment_model_params)
 
