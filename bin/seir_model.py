@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-import re
-import datetime
-import urllib.request
-import io
-import math
-from datetime import date
 import json
 from datetime import datetime as dt
 import time
@@ -14,14 +8,10 @@ import argparse
 import torch
 from Bio import Phylo
 import pandas as pd
-import matplotlib.pyplot as plt
 from augur.utils import json_to_tree
 
 import pyro
 import pyro.distributions as dist
-from pyro.contrib.epidemiology import CompartmentalModel
-from pyro.contrib.epidemiology.models import SuperspreadingSEIRModel
-from pyro.contrib.epidemiology.distributions import binomial_dist, infection_dist
 
 pyro.enable_validation(True)
 torch.set_default_dtype(torch.double)
@@ -73,7 +63,7 @@ def toYearFraction(date):
 
 def main():
 
-    parser = argparse.ArgumentParser(description=f"SEIR model for specific region")
+    parser = argparse.ArgumentParser(description="SEIR model for specific region")
     parser.add_argument("--tree", help="tree newick file or auspice json")
     parser.add_argument(
         "--infection_dates", help="timeseries of new cases value counts"
