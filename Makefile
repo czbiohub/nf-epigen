@@ -43,7 +43,7 @@ run-nf-epigen-simpleseirdmodel:
 	--model_type SimpleSEIRDModel \
 	--population_csv ${POPULATION_CSV} \
 	--num_samples_csv ${NUM_SAMPLES_CSV} \
-	--mortality_rate 2
+	--mortality_rate 0.01
 	--incubation_time 5.5 \
 	--recovery_time 14 \
 	--haar_full_mass 7
