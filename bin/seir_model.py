@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-import re
-import datetime
-import urllib.request
-import io
-import math
-from datetime import date
 import json
 from datetime import datetime as dt
 import time
@@ -14,7 +8,6 @@ import argparse
 import torch
 from Bio import Phylo
 import pandas as pd
-import matplotlib.pyplot as plt
 from augur.utils import json_to_tree
 
 import pyro
@@ -73,7 +66,7 @@ def toYearFraction(date):
 
 def main():
 
-    parser = argparse.ArgumentParser(description=f"SEIR model for specific region")
+    parser = argparse.ArgumentParser(description="SEIR model for specific region")
     parser.add_argument("--tree", help="tree newick file or auspice json")
     parser.add_argument(
         "--infection_dates", help="timeseries of new cases value counts"
@@ -167,9 +160,13 @@ def main():
 
     if args.model_type == "SuperspreadingSEIRModel":
         last_tip_date = metadata["decimal_date"].max()
-        leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(phylogeny_newick)
+        leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(
+            phylogeny_newick
+        )
         shift = last_tip_date - max(leaf_times)
-        first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
+        first_timeseries_date = pd.to_datetime(
+            infection_dates["date"]
+        ).apply(toYearFraction).min()
         leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
         coal_times = (coal_times + shift - first_timeseries_date)*365.25
 
