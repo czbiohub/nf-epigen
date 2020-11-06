@@ -264,7 +264,7 @@ ch_seir_model_inputs.join(ch_population).join(ch_num_samples).set{ ch_region_spe
 
 
 process seir_model {
-    publishDir "$params.outdir/seir_model"
+    publishDir "$params.outdir/${params.model_type}"
     container = "czbiohub/epigen-python"
 
     input:
