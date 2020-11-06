@@ -172,9 +172,9 @@ def main():
         first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
         leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
         coal_times = (coal_times + shift - first_timeseries_date)*365.25
-        
-        compartment_model_params["leaf_times"] = leaf_times,
-        compartment_model_params["coal_times"] = coal_times,
+
+        compartment_model_params["leaf_times"] = leaf_times
+        compartment_model_params["coal_times"] = coal_times
 
     model = compartment_model(**compartment_model_params)
 
