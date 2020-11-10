@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-import re
-import datetime
-import urllib.request
-import io
-import math
-from datetime import date
 import json
 from datetime import datetime as dt
 import time
@@ -14,7 +8,6 @@ import argparse
 import torch
 from Bio import Phylo
 import pandas as pd
-import matplotlib.pyplot as plt
 from augur.utils import json_to_tree
 
 import pyro
@@ -73,13 +66,29 @@ def toYearFraction(date):
 
 def main():
 
-    parser = argparse.ArgumentParser(description=f"SEIR model for specific region")
+    parser = argparse.ArgumentParser(description="SEIR model for specific region")
     parser.add_argument("--tree", help="tree newick file or auspice json")
     parser.add_argument(
         "--infection_dates", help="timeseries of new cases value counts"
     )
     parser.add_argument("--metadata", help="metadata.tsv file from gisaid", required=True)
-    
+
+    parser.add_argument(
+        "--model_type",
+        help="stochastic discrete-time discrete-state model",
+        choices=[
+            "SimpleSIRModel",
+            "SimpleSEIRModel",
+            "SimpleSEIRDModel",
+            "OverdispersedSIRModel",
+            "OverdispersedSEIRModel",
+            "SuperspreadingSIRModel",
+            "SuperspreadingSEIRModel",
+            "HeterogeneousSIRModel"
+        ],
+        required=True,
+        type=str
+    )
     parser.add_argument(
         "--population",
         help="the total population of a single-region (S + I + R)",
@@ -101,13 +110,18 @@ def main():
     parser.add_argument(
         "--incubation_time",
         help="Mean incubation time (duration in state E)",
-        required=True,
+        required=False,
         type=float
     )
     parser.add_argument(
         "--recovery_time",
         help="Mean recovery time (duration in state I)",
         required=True,
+        type=float
+    )
+    parser.add_argument(
+        "--mortality_rate",
+        help="Mean mortality rate",
         type=float
     )
 
@@ -129,23 +143,43 @@ def main():
     metadata["date"] = pd.to_datetime(metadata["date"])
     metadata["decimal_date"] = metadata["date"].apply(toYearFraction)
 
-    last_tip_date = metadata["decimal_date"].max()
-    leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(phylogeny_newick)
-    shift = last_tip_date - max(leaf_times)
-    first_timeseries_date = pd.to_datetime(infection_dates["date"]).apply(toYearFraction).min()
-    leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
-    coal_times = (coal_times + shift - first_timeseries_date)*365.25
+    compartment_model = getattr(pyro.contrib.epidemiology.models, args.model_type)
+    compartment_model_params = {
+        "population": int(args.population),
+        "recovery_time": args.recovery_time,
+        # "incubation_time": args.incubation_time,
+        "data": new_cases,
+    }
 
-    model = SuperspreadingSEIRModel(
-        population=int(args.population),
-        incubation_time=args.incubation_time,
-        recovery_time=args.recovery_time,
-        data=new_cases,
-        leaf_times=leaf_times,
-        coal_times=coal_times,
-    )
+    # add optional kwargs
+    if args.incubation_time:
+        compartment_model_params["incubation_time"] = args.incubation_time
 
-    mcmc = model.fit_mcmc(num_samples=args.num_samples, haar_full_mass=args.haar_full_mass)
+    if args.mortality_rate:
+        compartment_model_params["mortality_rate"] = args.mortality_rate
+
+    if args.model_type == "SuperspreadingSEIRModel":
+        last_tip_date = metadata["decimal_date"].max()
+        leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(
+            phylogeny_newick
+        )
+        shift = last_tip_date - max(leaf_times)
+        first_timeseries_date = pd.to_datetime(
+            infection_dates["date"]
+        ).apply(toYearFraction).min()
+        leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
+        coal_times = (coal_times + shift - first_timeseries_date)*365.25
+
+        compartment_model_params["leaf_times"] = leaf_times
+        compartment_model_params["coal_times"] = coal_times
+
+    model = compartment_model(**compartment_model_params)
+
+    mcmc_fit_params = {
+        "num_samples": args.num_samples,
+        "haar_full_mass": args.haar_full_mass
+    }
+    mcmc = model.fit_mcmc(**mcmc_fit_params)
 
     mcmc.summary()
 

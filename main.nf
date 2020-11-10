@@ -29,9 +29,11 @@ def helpMessage() {
     Model Parameters:
       --incubation_time             Mean incubation time (duration in state E)
       --recovery_time               Mean recovery time (duration in state I)
+      --mortality_rate              Mean mortality rate
       --haar_full_mass              Number of low frequency Haar components to include in the full mass matrix.
       --num_samples_csv             Number of posterior samples to draw via mcmc (if running for multiple regions)
       --population_csv              the total population of a single-region (S + I + R) (if running for multiple regions)
+      --compartment_model           stochastic discrete-time discrete-state model
 
     Gisaid
       --gisaid_metadata             metadata file downloaded from gisaid
@@ -262,7 +264,7 @@ ch_seir_model_inputs.join(ch_population).join(ch_num_samples).set{ ch_region_spe
 
 
 process seir_model {
-    publishDir "$params.outdir/seir_model"
+    publishDir "$params.outdir/${params.model_type}"
     container = "czbiohub/epigen-python"
 
     input:
@@ -273,17 +275,59 @@ process seir_model {
 
     script:
     results = "${region}_mcmc_output.txt"
+    if (params.mortality_rate && params.incubation_time) {
     """
     seir_model.py \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --incubation_time ${params.incubation_time} \
+      --recovery_time ${params.recovery_time} \
+      --mortality_rate ${params.mortality_rate} > ${results}
+    """
+    } else if (params.incubation_time && !params.mortality_rate) {
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
       --population ${population} \
       --num_samples ${num_samples} \
       --haar_full_mass ${params.haar_full_mass} \
       --incubation_time ${params.incubation_time} \
       --recovery_time ${params.recovery_time} > ${results}
     """
+    } else if (params.mortality_rate && !params.incubation_time) {
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --mortality_rate ${params.mortality_rate} \
+      --recovery_time ${params.recovery_time} > ${results}
+    """
+    } else { //no incubation or mortality rate
+    """
+    seir_model.py \
+      --metadata ${metadata} \
+      --tree ${newick} \
+      --infection_dates ${imputed_infection_dates} \
+      --model_type ${params.model_type} \
+      --population ${population} \
+      --num_samples ${num_samples} \
+      --haar_full_mass ${params.haar_full_mass} \
+      --recovery_time ${params.recovery_time} > ${results}
+    """
+    }
 }
 
 
