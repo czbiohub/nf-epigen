@@ -1,10 +1,12 @@
-#NEWICKS="timetree_error/*.nwk"
-NEWICKS="timetrees/*.nwk"
-AUSPICE_JSONS=jsons/
-GISAID_METADATA=gisaid/metadata.tsv
-GISAID_SEQUENCES=gisaid/sequences.tsv
-POPULATION_CSV=model_params/population.csv
-NUM_SAMPLES_CSV=model_params/num_samples.csv
+NEWICKS="/mnt/data_lg/lucymli/nf-epigen/timetrees/*.nwk"
+#NEWICKS="timetrees/*.nwk"
+GISAID_METADATA=/mnt/data_lg/phoenix/nf-epigen/gisaid/metadata.tsv
+GISAID_SEQUENCES=/mnt/data_lg/phoenix/nf-epigen/gisaid/sequences.tsv
+#POPULATION_CSV=model_params/population.csv
+POPULATION_CSV=/mnt/data_lg/lucymli/nf-epigen/model_params/population.csv
+#NUM_SAMPLES_CSV=model_params/num_samples.csv
+NUM_SAMPLES_CSV=/mnt/data_lg/lucymli/nf-epigen/model_params/num_samples.csv
+MODEL=OverdispersedSEIRModel
 
 test-python:
 	python bin/seir_model.py \
@@ -18,32 +20,16 @@ test-python:
 	--recovery_time 14 \
 	--haar_full_mass 7
 
-run-nf-epigen-superspreadingseirmodel:
+run-nf-epigen:
 	nextflow run main.nf \
 	-profile docker \
 	-resume \
 	--newicks ${NEWICKS} \
 	--gisaid_metadata ${GISAID_METADATA} \
 	--gisaid_sequences ${GISAID_SEQUENCES} \
-	--model_type SuperspreadingSEIRModel \
+	--model_type ${MODEL} \
 	--population_csv ${POPULATION_CSV} \
 	--num_samples_csv ${NUM_SAMPLES_CSV} \
-	--incubation_time 5.5 \
-	--recovery_time 14 \
-	--haar_full_mass 7
-
-
-run-nf-epigen-simpleseirdmodel:
-	nextflow run main.nf \
-	-profile docker \
-	-resume \
-	--newicks ${NEWICKS} \
-	--gisaid_metadata ${GISAID_METADATA} \
-	--gisaid_sequences ${GISAID_SEQUENCES} \
-	--model_type SimpleSEIRDModel \
-	--population_csv ${POPULATION_CSV} \
-	--num_samples_csv ${NUM_SAMPLES_CSV} \
-	--mortality_rate 0.01
 	--incubation_time 5.5 \
 	--recovery_time 14 \
 	--haar_full_mass 7
