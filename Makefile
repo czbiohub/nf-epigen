@@ -7,9 +7,11 @@ POPULATION_CSV=/mnt/data_lg/lucymli/nf-epigen/model_params/population.csv
 #NUM_SAMPLES_CSV=model_params/num_samples.csv
 NUM_SAMPLES_CSV=/mnt/data_lg/lucymli/nf-epigen/model_params/num_samples.csv
 MODEL=OverdispersedSEIRModel
+REGION=california
 
 test-python:
 	python bin/seir_model.py \
+	--region ${REGION} \
 	--metadata ${GISAID_METADATA} \
 	--infection_dates results/imputed_infection_dates/summary_california_timeseries_new_cases_value_counts.txt \
 	--tree results/imputed_infection_dates/tree_california.nwk \

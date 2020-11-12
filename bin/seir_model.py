@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime as dt
+import logging
 import time
 import argparse
 
@@ -50,13 +51,10 @@ def fix_parsing_annotations(phylogeny):
 def toYearFraction(date):
     def sinceEpoch(date):  # returns seconds since epoch
         return time.mktime(date.timetuple())
-
     s = sinceEpoch
-
     year = date.year
     startOfThisYear = dt(year=year, month=1, day=1)
     startOfNextYear = dt(year=year + 1, month=1, day=1)
-
     yearElapsed = s(date) - s(startOfThisYear)
     yearDuration = s(startOfNextYear) - s(startOfThisYear)
     fraction = yearElapsed / yearDuration
@@ -64,10 +62,61 @@ def toYearFraction(date):
     return date.year + fraction
 
 
+def prune_tree(phylogeny, metadata, region):
+
+    # get strain names from metadata
+    strains = metadata.query(
+        f"country == '{region.title()}' | \
+        division == '{region.title()}'"
+    )["strain"].values
+
+    logging.info(f"beginning terminal nodes {phylogeny.count_terminals()}")
+
+    # collapse internal nodes that have data not from region
+    internals = phylogeny.get_nonterminals()
+    for node in internals:
+        if (not(node.name.startswith("NODE_"))&(node.name not in strains)):
+            phylogeny.collapse(node)
+
+    # prune terminal nodes
+    terminals = phylogeny.get_terminals()
+    for node in terminals:
+        if (node.name not in strains):
+            phylogeny.prune(node)
+
+    logging.info(f"ending terminal nodes {phylogeny.count_terminals()}")
+
+    for node in phylogeny.find_clades():
+        if node.is_terminal():
+            logging.info("node: {node.name} retained in tree")
+
+
+def get_new_cases(infection_dates):
+    new_cases = list(infection_dates["new_cases"])
+    if new_cases[-1] == 0:
+        new_cases.pop(-1)
+    return torch.tensor(new_cases, dtype=torch.double)
+
+
+def get_leaf_time_coal_times(phylogeny, last_tip_date, infection_dates):
+    leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(
+        phylogeny
+    )
+    shift = last_tip_date - max(leaf_times)
+    first_timeseries_date = pd.to_datetime(
+        infection_dates["date"]
+    ).apply(toYearFraction).min()
+
+    leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
+    coal_times = (coal_times + shift - first_timeseries_date)*365.25
+
+    return leaf_times, coal_times
+
 def main():
 
     parser = argparse.ArgumentParser(description="SEIR model for specific region")
-    parser.add_argument("--tree", help="tree newick file or auspice json")
+    parser.add_argument("--region", help="region of interest (division or country)")
+    parser.add_argument("--tree", help="tree newick file")
     parser.add_argument(
         "--infection_dates", help="timeseries of new cases value counts"
     )
@@ -127,18 +176,17 @@ def main():
 
     args = parser.parse_args()
 
-    phylogeny_newick = get_phylogeny(args.tree, tree_type="newick")
+    phylogeny = get_phylogeny(args.tree, tree_type="newick")
     infection_dates = pd.read_csv(args.infection_dates, sep=",")
     full_metadata = pd.read_csv(args.metadata, sep="\t")
 
-    fix_parsing_annotations(phylogeny_newick)
-    new_cases = list(infection_dates["new_cases"])
-    if new_cases[-1] == 0:
-        new_cases.pop(-1)
-    new_cases = torch.tensor(new_cases, dtype=torch.double)
+    fix_parsing_annotations(phylogeny)
+    prune_tree(phylogeny, full_metadata, args.region)
+
+    new_cases = get_new_cases(infection_dates)
 
     metadata = full_metadata[
-        full_metadata["strain"].isin([x.name for x in phylogeny_newick.get_terminals()])
+        full_metadata["strain"].isin([x.name for x in phylogeny.get_terminals()])
     ]
     metadata["date"] = pd.to_datetime(metadata["date"])
     metadata["decimal_date"] = metadata["date"].apply(toYearFraction)
@@ -147,7 +195,6 @@ def main():
     compartment_model_params = {
         "population": int(args.population),
         "recovery_time": args.recovery_time,
-        # "incubation_time": args.incubation_time,
         "data": new_cases,
     }
 
@@ -160,16 +207,9 @@ def main():
 
     if args.model_type == "SuperspreadingSEIRModel":
         last_tip_date = metadata["decimal_date"].max()
-        leaf_times, coal_times = dist.coalescent.bio_phylo_to_times(
-            phylogeny_newick
+        leaf_times, coal_times = get_leaf_time_coal_times(
+            phylogeny, last_tip_date, infection_dates
         )
-        shift = last_tip_date - max(leaf_times)
-        first_timeseries_date = pd.to_datetime(
-            infection_dates["date"]
-        ).apply(toYearFraction).min()
-        leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
-        coal_times = (coal_times + shift - first_timeseries_date)*365.25
-
         compartment_model_params["leaf_times"] = leaf_times
         compartment_model_params["coal_times"] = coal_times
 
