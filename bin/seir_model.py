@@ -109,7 +109,7 @@ def prune_tree(phylogeny, metadata, region):
 
     for node in phylogeny.find_clades():
         if node.is_terminal():
-            logger.info("node: {node.name} retained in tree")
+            logger.info(f"node: {node.name} retained in tree")
 
 
 def get_new_cases(infection_dates):
