@@ -21,6 +21,22 @@ pyro.enable_validation(True)
 torch.set_default_dtype(torch.double)
 torch.set_printoptions(precision=2)
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
 
 def get_phylogeny(tree_path, tree_type="newick"):
     if tree_type == "newick":
@@ -75,7 +91,7 @@ def prune_tree(phylogeny, metadata, region):
     (metadata["division_nospace"] == region.lower())
     ].strain.values
 
-    logging.info(f"beginning terminal nodes {phylogeny.count_terminals()}")
+    logger.info(f"beginning terminal nodes {phylogeny.count_terminals()}")
 
     # collapse internal nodes that have data not from region
     internals = phylogeny.get_nonterminals()
@@ -89,11 +105,11 @@ def prune_tree(phylogeny, metadata, region):
         if (node.name not in strains):
             phylogeny.prune(node)
 
-    logging.info(f"ending terminal nodes {phylogeny.count_terminals()}")
+    logger.info(f"ending terminal nodes {phylogeny.count_terminals()}")
 
     for node in phylogeny.find_clades():
         if node.is_terminal():
-            logging.info("node: {node.name} retained in tree")
+            logger.info("node: {node.name} retained in tree")
 
 
 def get_new_cases(infection_dates):
@@ -114,7 +130,6 @@ def get_leaf_time_coal_times(phylogeny, last_tip_date, infection_dates):
 
     leaf_times = (leaf_times + shift - first_timeseries_date)*365.25
     coal_times = (coal_times + shift - first_timeseries_date)*365.25
-
     return leaf_times, coal_times
 
 def main():
