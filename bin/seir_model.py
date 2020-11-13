@@ -65,10 +65,15 @@ def toYearFraction(date):
 def prune_tree(phylogeny, metadata, region):
 
     # get strain names from metadata
-    strains = metadata.query(
-        f"country == '{region.title()}' | \
-        division == '{region.title()}'"
-    )["strain"].values
+    metadata["region_nospace"] = metadata["region"].str.replace(" ", "").str.lower()
+    metadata["division_nospace"] = metadata["division"].str.replace(" ", "").str.lower()
+    metadata["country_nospace"] = metadata["country"].str.replace(" ", "").str.lower()
+
+    strains = metadata[
+    (metadata["region_nospace"] == region.lower()) |
+    (metadata["country_nospace"] == region.lower()) |
+    (metadata["division_nospace"] == region.lower())
+    ].strain.values
 
     logging.info(f"beginning terminal nodes {phylogeny.count_terminals()}")
 
