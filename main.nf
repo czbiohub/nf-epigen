@@ -278,6 +278,7 @@ process seir_model {
     if (params.mortality_rate && params.incubation_time) {
     """
     seir_model.py \
+      --region ${region} \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
@@ -292,6 +293,7 @@ process seir_model {
     } else if (params.incubation_time && !params.mortality_rate) {
     """
     seir_model.py \
+      --region ${region} \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
@@ -305,6 +307,7 @@ process seir_model {
     } else if (params.mortality_rate && !params.incubation_time) {
     """
     seir_model.py \
+      --region ${region} \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
@@ -318,6 +321,7 @@ process seir_model {
     } else { //no incubation or mortality rate
     """
     seir_model.py \
+      --region ${region} \
       --metadata ${metadata} \
       --tree ${newick} \
       --infection_dates ${imputed_infection_dates} \
